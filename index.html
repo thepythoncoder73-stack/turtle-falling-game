@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Space Invaders Game!</title>
+<style>
+  body {
+    margin: 0;
+    background:#071150;
+    overflow:hidden;
+    font-family:Arial, sans-serif;
+    color:#fff;
+  }
+  #gameCanvas {
+    display:block;
+    background:#071150;
+    margin:0 auto;
+  }
+  #overlay {
+    position:absolute;
+    top:10px;
+    left:50%;
+    transform:translateX(-50%);
+    width:900px;
+    pointer-events:none;
+    color:#fff;
+    font-weight:bold;
+    font-size:18px;
+    text-align:center;
+  }
+  #timer { color:#D745EE; }
+  #score { color:#ED4B9C; margin-top:5px; }
+  #gameOverMsg {
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    font-size:48px;
+    color:#ff5555;
+    display:none;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="900" height="700"></canvas>
+<div id="overlay">
+  <div id="timer">Time : 60</div>
+  <div id="score">Score : 0</div>
+</div>
+<div id="gameOverMsg">Game Over</div>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const WIDTH = canvas.width;
+const HEIGHT = canvas.height;
+
+let timer = 60;
+let gameOver = false;
+let score = 0;
+
+document.getElementById('timer').textContent = `Time : ${timer}`;
+document.getElementById('score').textContent = `Score : ${score}`;
+
+const player = {
+  x: WIDTH/2,
+  y: HEIGHT - 30,
+  size: 30,
+  color: 'orange',
+  speed: 50
+};
+
+const enemies = [];
+const bullets = [];
+
+// Timer countdown
+const countdown = setInterval(() => {
+  if (timer > 0) {
+    timer--;
+    document.getElementById('timer').textContent = `Time : ${timer}`;
+  } else {
+    gameOver = true;
+    clearInterval(countdown);
+    document.getElementById('gameOverMsg').style.display = 'block';
+  }
+}, 1000);
+
+// Enemy spawn
+function spawnEnemy() {
+  if (gameOver) return;
+  const enemy = {
+    x: Math.random() * (WIDTH - 100) + 50,
+    y: -30,
+    size: 30,
+    color: 'green',
+    speed: 3
+  };
+  enemies.push(enemy);
+  setTimeout(spawnEnemy, 1000);
+}
+spawnEnemy();
+
+// Input handling
+document.addEventListener('keydown', e => {
+  if (gameOver) return;
+  if (e.key === 'ArrowRight') {
+    player.x = Math.min(WIDTH - player.size, player.x + player.speed);
+  } else if (e.key === 'ArrowLeft') {
+    player.x = Math.max(player.size, player.x - player.speed);
+  } else if (e.code === 'Space') {
+    bullets.push({
+      x: player.x,
+      y: player.y,
+      w: 9,
+      h: 30,
+      color: 'red',
+      speed: 5
+    });
+  }
+});
+
+// Game loop
+function loop() {
+  ctx.clearRect(0,0,WIDTH,HEIGHT);
+  // Draw player (triangle)
+  ctx.fillStyle = player.color;
+  ctx.beginPath();
+  ctx.moveTo(player.x, player.y - player.size);
+  ctx.lineTo(player.x - player.size, player.y + player.size);
+  ctx.lineTo(player.x + player.size, player.y + player.size);
+  ctx.closePath();
+  ctx.fill();
+
+  // Update and draw enemies
+  for (let i = enemies.length-1; i>=0; i--) {
+    const e = enemies[i];
+    e.y += e.speed;
+    if (e.y - e.size > HEIGHT) {
+      enemies.splice(i,1);
+      continue;
+    }
+    ctx.fillStyle = e.color;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.size, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Update and draw bullets
+  for (let i = bullets.length-1; i>=0; i--) {
+    const b = bullets[i];
+    b.y -= b.speed;
+    if (b.y + b.h < 0) {
+      bullets.splice(i,1);
+      continue;
+    }
+    ctx.fillStyle = b.color;
+    ctx.fillRect(b.x - b.w/2, b.y - b.h, b.w, b.h);
+  }
+
+  // Collision detection
+  for (let i = enemies.length-1; i>=0; i--) {
+    const e = enemies[i];
+    for (let j = bullets.length-1; j>=0; j--) {
+      const b = bullets[j];
+      const dx = e.x - b.x;
+      const dy = e.y - (b.y - b.h/2);
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < e.size + Math.max(b.w,b.h)/2) {
+        // hit
+        enemies.splice(i,1);
+        bullets.splice(j,1);
+        score++;
+        document.getElementById('score').textContent = `Score : ${score}`;
+        break;
+      }
+    }
+  }
+
+  if (!gameOver) requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
